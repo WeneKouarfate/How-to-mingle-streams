@@ -1,1 +1,1 @@
-Require Stream.
+From Mingle Require Import Stream.
