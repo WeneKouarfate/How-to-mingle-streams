@@ -1,0 +1,5 @@
+(rocq.theory
+  (name Mingle)
+  (package mingle)
+  (theories Stdlib))
+
