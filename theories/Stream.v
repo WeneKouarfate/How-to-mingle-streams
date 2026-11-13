@@ -1,23 +1,21 @@
-CoInductive stream (A: Type): Type := {
-    hd: A;
-    tl: stream A
+CoInductive stream (A: Type): Type := SCons {
+    shd: A;
+    stl: stream A
 }.
 
-Notation "x ::: xs" := {|hd := x; tl:= xs |} (at level 60, right associativity).
+Notation "x ::: xs" := {|shd := x; stl:= xs |} (at level 60, right associativity).
 
 CoFixpoint repeat {A} (a: A) := a ::: (repeat a).
 Notation "# a" := (repeat a) (at level 60).
 
-Arguments hd {A} _.
-Arguments tl {A} _.
+Arguments shd {A} _.
+Arguments stl {A} _.
 
-Eval cbv in hd (tl (repeat 2)). 
+Notation "s '" := (stl s).
+Notation "s `" := (shd s).
 
-Notation "s '" := (tl s).
-Notation "s `" := (hd s).
-
-CoFixpoint map {A B} (f: A -> B) (s: stream A): stream B :=
-    f (s `) ::: map f (s ').
+CoFixpoint smap {A B} (f: A -> B) (s: stream A): stream B :=
+    f (s `) ::: smap f (s ').
 CoFixpoint zipWith {A B C} (f: A -> B -> C)(s: stream A)(t: stream B): stream C :=
     f (s `) (t `) ::: zipWith f (s ') (t ').
 
@@ -33,16 +31,16 @@ Notation "s === t" := (equal s t)(at level 60).
 
 
 Definition head_repeat_map {A B} (f: A -> B) (x: A):
-    (# (f x)) ` = (map f (#x)) `.
+    (# (f x)) ` = (smap f (#x)) `.
 Proof. reflexivity. Qed.
-(* Using eq_refl or even ltac:(reflexivity) for head_equal will make tail_equal fail as unification match t to be syntactically exactly s*)
+(* Using eq_refl or even ltac:(reflexivity) for head_equal will make tail_equal fail as unification match t to be syntactically exactaily s*)
 CoFixpoint repeat_map {A B} (f : A -> B) (x : A) :
-    #(f x) === map f (#x) :=
+    #(f x) === smap f (#x) :=
   {| 
     head_equal := head_repeat_map f x; 
     tail_equal := repeat_map f x
   |}.
-Lemma repeat_mapl {A B} (f: A -> B) x : #(f x) === map f (#x).
+Lemma repeat_mapl {A B} (f: A -> B) x : #(f x) === smap f (#x).
 Proof.
 cofix CH.
 constructor.
@@ -54,6 +52,18 @@ CoFixpoint eq_stream_refl {A} (s: stream A): s === s := {|
     head_equal:= eq_refl;
     tail_equal:= eq_stream_refl (s ')
 |}.
+
+From Stdlib Require Import List.
+Import ListNotations.
+Check shd.
+
+CoFixpoint crop {A} (xss: list (stream A))
+    (yss: stream (stream A)): stream (list A) := {|
+        shd := map shd xss;
+        stl := crop (map stl (xss ++ [yss `])) (yss ')
+    |}.
+
+
 
 Definition relation (A: Type):= A -> A -> Prop.
 Definition bisimulation {A} (R: relation (stream A)): Prop :=
@@ -91,7 +101,9 @@ induction i; intros s t [HC1 HC2].
 - apply IHi. exact HC2.
 Qed.
 
-From Stdlib Require Import Morphisms.
+
+
+From Stdlib Require Import Setoid Morphisms.
 From Stdlib Require Import Classes.RelationClasses.
 
 Instance equal_equivalence {A}: Equivalence (@equal A).
@@ -120,20 +132,20 @@ constructor.
 Qed.
 *)
 
-Instance head_proper {A}: Proper (equal ==> eq) (@hd A).
+Instance head_proper {A}: Proper (equal ==> eq) (@shd A).
 Proof.
 intros s1 s2 [Hh _].
 exact Hh.
 Qed.
 
-Instance tail_proper {A}: Proper (equal ==> equal) (@tl A).
+Instance tail_proper {A}: Proper (equal ==> equal) (@stl A).
 Proof.
 intros s1 s2 [_ Ht].
 exact Ht.
 Qed.
 
 Instance map_proper {A B} :
-    Proper ((pointwise_relation A eq) ==> (@equal A) ==> (@equal B)) (@map A B).
+    Proper ((pointwise_relation A eq) ==> (@equal A) ==> (@equal B)) (@smap A B).
 Proof.
 cofix CH.
 intros f g Hfg s1 s2 [H1 H2].
@@ -155,12 +167,10 @@ constructor; simpl.
 - apply CH; auto.
 Qed. 
 
-Require Setoid.
-
 Lemma zipWith_map {A B C} 
     (f: A -> B -> C)(g: A -> B)(s t: stream A):
     s === t -> 
-    zipWith f s (map g t) === zipWith f t (map g s).
+    zipWith f s (smap g t) === zipWith f t (smap g s).
 Proof.
 intro Hst.
 setoid_rewrite Hst.
