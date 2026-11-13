@@ -3,16 +3,18 @@ CoInductive stream (A: Type): Type := SCons {
     stl: stream A
 }.
 
-Notation "x ::: xs" := {|shd := x; stl:= xs |} (at level 60, right associativity).
+Arguments SCons {A} _.
+(*Notation "x ::: xs" := {|shd := x; stl:= xs |} (at level 60, right associativity).*)
+Infix ":::" :=(SCons)(at level 60, right associativity).
 
 CoFixpoint repeat {A} (a: A) := a ::: (repeat a).
-Notation "# a" := (repeat a) (at level 60).
+Notation "# a" := (repeat a) (at level 35).
 
 Arguments shd {A} _.
 Arguments stl {A} _.
 
-Notation "s '" := (stl s).
-Notation "s `" := (shd s).
+Notation "s '" := (stl s)(at level 1, left associativity).
+Notation "s `" := (shd s)(at level 1, left associativity).
 
 CoFixpoint smap {A B} (f: A -> B) (s: stream A): stream B :=
     f (s `) ::: smap f (s ').
@@ -27,7 +29,7 @@ CoInductive equal {A} (s t: stream A): Prop := {
 Arguments head_equal {A} _ _.
 Arguments tail_equal {A} _ _.
 
-Notation "s === t" := (equal s t)(at level 60).
+Notation "s === t" := (equal s t)(at level 70, no associativity).
 
 
 Definition head_repeat_map {A B} (f: A -> B) (x: A):
@@ -53,18 +55,6 @@ CoFixpoint eq_stream_refl {A} (s: stream A): s === s := {|
     tail_equal:= eq_stream_refl (s ')
 |}.
 
-From Stdlib Require Import List.
-Import ListNotations.
-Check shd.
-
-CoFixpoint crop {A} (xss: list (stream A))
-    (yss: stream (stream A)): stream (list A) := {|
-        shd := map shd xss;
-        stl := crop (map stl (xss ++ [yss `])) (yss ')
-    |}.
-
-
-
 Definition relation (A: Type):= A -> A -> Prop.
 Definition bisimulation {A} (R: relation (stream A)): Prop :=
     forall s t, R s t -> (s `) = (t `) /\ R (s ') (t ').
@@ -87,7 +77,7 @@ Fixpoint elt {A} (s: stream A) (i: nat): A :=
     | 0 => s  `
     | S j => elt (s ') j 
     end.
-Notation "s !! i" := (elt s i)(at level 60).
+Notation "s !! i" := (elt s i)(at level 1, left associativity).
 
 Lemma equal_elt {A} (s t: stream A):
     s === t -> forall i, s !! i = t !! i.
@@ -121,8 +111,8 @@ constructor.
     + apply CH with (y := y '); auto.
 Qed.
 
-(*
-Instance SCons_proper {A}: Proper (eq ==> (@equal A) ==> (@equal A)) SCons.
+
+Instance SCons_proper {A}: Proper (eq ==> (@equal A) ==> (@equal A)) (@SCons A).
 Proof.
 intros x1 x2 Hx s1 s2 Hs.
 subst x2.
@@ -130,7 +120,7 @@ constructor.
 - reflexivity.
 - exact Hs.
 Qed.
-*)
+
 
 Instance head_proper {A}: Proper (equal ==> eq) (@shd A).
 Proof.
