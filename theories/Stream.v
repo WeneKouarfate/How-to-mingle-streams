@@ -1,17 +1,27 @@
-CoInductive Stream (A: Type): Type :=
-    SCons: A -> Stream A -> Stream A.
+CoInductive Stream (A: Type): Type := {
+    hd: A;
+    tl: Stream A
+}.
 
-Arguments SCons {_} _ _ .
-Infix ":::" := SCons (at level 60, right associativity).
+Notation "x ::: xs" := {|hd := x; tl:= xs |} (at level 60, right associativity).
 
 CoFixpoint repeat {A} (a: A) := a ::: (repeat a).
 Notation "# a" := (repeat a) (at level 60).
+
+Arguments hd {A} _.
+Arguments tl {A} _.
+
+Eval cbv in hd (tl (repeat 2)). 
 
 Definition head {A} (s: Stream A): A := match s with x ::: _ => x end.
 Definition tail {A} (s: Stream A): Stream A := 
     match s with _ ::: s => s end.
 
-Notation "s '" := (tail s).
+Notation "s '" := (tl s).
+Notation "s `" := (hd s).
+
+Definition lookup {A} (n: nat) (s: Stream A): A :=
+    match s with a ::: _ => a end.
 
 CoFixpoint map {A B} (f: A -> B) (s: Stream A): Stream B :=
     f (head s) ::: map f (s ').
