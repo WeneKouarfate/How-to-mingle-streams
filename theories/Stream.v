@@ -13,29 +13,35 @@ Arguments tl {A} _.
 
 Eval cbv in hd (tl (repeat 2)). 
 
-Definition head {A} (s: stream A): A := match s with x ::: _ => x end.
-Definition tail {A} (s: stream A): stream A := 
-    match s with _ ::: s => s end.
-
 Notation "s '" := (tl s).
 Notation "s `" := (hd s).
 
-Definition lookup {A} (n: nat) (s: stream A): A :=
-    match s with a ::: _ => a end.
-
 CoFixpoint map {A B} (f: A -> B) (s: stream A): stream B :=
-    f (head s) ::: map f (s ').
+    f (s `) ::: map f (s ').
 CoFixpoint zipWith {A B C} (f: A -> B -> C)(s: stream A)(t: stream B): stream C :=
-    f (head s) (head t) ::: zipWith f (s ') (t ').
+    f (s `) (t `) ::: zipWith f (s ') (t ').
 
-CoInductive equal {A} (s t: stream A): Prop :=
-    make_equal: head s = head t -> equal (s ') (t ') -> equal s t.
+CoInductive equal {A} (s t: stream A): Prop := {
+    head_equal: (s `) = (t `);
+    tail_equal: equal (s ') (t ')
+}.
+
+Arguments head_equal {A} _ _.
+Arguments tail_equal {A} _ _.
 
 Notation "s === t" := (equal s t)(at level 60).
 
 
-CoFixpoint repeat_map {A B} (f: A -> B) x: #(f x) === map f (#x) :=
-    make_equal (#(f x)) (map f (#x)) eq_refl (repeat_map f x).
+Definition head_repeat_map {A B} (f: A -> B) (x: A):
+    (# (f x)) ` = (map f (#x)) `.
+Proof. reflexivity. Qed.
+(* Using eq_refl or even ltac:(reflexivity) for head_equal will make tail_equal fail as unification match t to be syntactically exactly s*)
+CoFixpoint repeat_map {A B} (f : A -> B) (x : A) :
+    #(f x) === map f (#x) :=
+  {| 
+    head_equal := head_repeat_map f x; 
+    tail_equal := repeat_map f x
+  |}.
 Lemma repeat_mapl {A B} (f: A -> B) x : #(f x) === map f (#x).
 Proof.
 cofix CH.
@@ -43,9 +49,15 @@ constructor.
 - reflexivity.
 - apply CH.
 Qed.
+
+CoFixpoint eq_stream_refl {A} (s: stream A): s === s := {|
+    head_equal:= eq_refl;
+    tail_equal:= eq_stream_refl (s ')
+|}.
+
 Definition relation (A: Type):= A -> A -> Prop.
 Definition bisimulation {A} (R: relation (stream A)): Prop :=
-    forall s t, R s t -> head s = head t /\ R (s ') (t ').
+    forall s t, R s t -> (s `) = (t `) /\ R (s ') (t ').
 
 Lemma bisimulation_equal {A} (R: relation (stream A)): forall  s t,
     bisimulation R -> R s t -> s ===t.
@@ -59,11 +71,16 @@ constructor.
 - apply CH; auto.
 Qed.
 
+
 Fixpoint elt {A} (s: stream A) (i: nat): A :=
-    match i with 0 => head s | S j => elt (s ') j end.
+    match i with 
+    | 0 => s  `
+    | S j => elt (s ') j 
+    end.
 Notation "s !! i" := (elt s i)(at level 60).
 
-Lemma equal_elt {A} (s t: stream A): s === t -> forall i, s !! i = t !! i.
+Lemma equal_elt {A} (s t: stream A):
+    s === t -> forall i, s !! i = t !! i.
 Proof.
 intros HC i.
 revert HC.
@@ -78,6 +95,7 @@ From Stdlib Require Import Morphisms.
 From Stdlib Require Import Classes.RelationClasses.
 
 Instance equal_equivalence {A}: Equivalence (@equal A).
+Proof.
 constructor.
 - unfold Reflexive. cofix CH. 
     constructor;[reflexivity | apply CH].
@@ -102,16 +120,16 @@ constructor.
 Qed.
 *)
 
-Instance head_proper {A}: Proper (equal ==> eq) (@head A).
+Instance head_proper {A}: Proper (equal ==> eq) (@hd A).
 Proof.
 intros s1 s2 [Hh _].
-assumption.
+exact Hh.
 Qed.
 
-Instance tail_proper {A}: Proper (equal ==> equal) (@tail A).
+Instance tail_proper {A}: Proper (equal ==> equal) (@tl A).
 Proof.
 intros s1 s2 [_ Ht].
-assumption.
+exact Ht.
 Qed.
 
 Instance map_proper {A B} :
@@ -136,4 +154,15 @@ constructor; simpl.
 - rewrite X1. rewrite X3. apply Hfg.
 - apply CH; auto.
 Qed. 
- 
+
+Require Setoid.
+
+Lemma zipWith_map {A B C} 
+    (f: A -> B -> C)(g: A -> B)(s t: stream A):
+    s === t -> 
+    zipWith f s (map g t) === zipWith f t (map g s).
+Proof.
+intro Hst.
+setoid_rewrite Hst.
+reflexivity.
+Qed.
