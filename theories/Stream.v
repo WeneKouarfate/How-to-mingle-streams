@@ -1,6 +1,6 @@
-CoInductive Stream (A: Type): Type := {
+CoInductive stream (A: Type): Type := {
     hd: A;
-    tl: Stream A
+    tl: stream A
 }.
 
 Notation "x ::: xs" := {|hd := x; tl:= xs |} (at level 60, right associativity).
@@ -13,22 +13,22 @@ Arguments tl {A} _.
 
 Eval cbv in hd (tl (repeat 2)). 
 
-Definition head {A} (s: Stream A): A := match s with x ::: _ => x end.
-Definition tail {A} (s: Stream A): Stream A := 
+Definition head {A} (s: stream A): A := match s with x ::: _ => x end.
+Definition tail {A} (s: stream A): stream A := 
     match s with _ ::: s => s end.
 
 Notation "s '" := (tl s).
 Notation "s `" := (hd s).
 
-Definition lookup {A} (n: nat) (s: Stream A): A :=
+Definition lookup {A} (n: nat) (s: stream A): A :=
     match s with a ::: _ => a end.
 
-CoFixpoint map {A B} (f: A -> B) (s: Stream A): Stream B :=
+CoFixpoint map {A B} (f: A -> B) (s: stream A): stream B :=
     f (head s) ::: map f (s ').
-CoFixpoint zipWith {A B C} (f: A -> B -> C)(s: Stream A)(t: Stream B): Stream C :=
+CoFixpoint zipWith {A B C} (f: A -> B -> C)(s: stream A)(t: stream B): stream C :=
     f (head s) (head t) ::: zipWith f (s ') (t ').
 
-CoInductive equal {A} (s t: Stream A): Prop :=
+CoInductive equal {A} (s t: stream A): Prop :=
     make_equal: head s = head t -> equal (s ') (t ') -> equal s t.
 
 Notation "s === t" := (equal s t)(at level 60).
@@ -44,10 +44,10 @@ constructor.
 - apply CH.
 Qed.
 Definition relation (A: Type):= A -> A -> Prop.
-Definition bisimulation {A} (R: relation (Stream A)): Prop :=
+Definition bisimulation {A} (R: relation (stream A)): Prop :=
     forall s t, R s t -> head s = head t /\ R (s ') (t ').
 
-Lemma bisimulation_equal {A} (R: relation (Stream A)): forall  s t,
+Lemma bisimulation_equal {A} (R: relation (stream A)): forall  s t,
     bisimulation R -> R s t -> s ===t.
 Proof.
 cofix CH.
@@ -59,11 +59,11 @@ constructor.
 - apply CH; auto.
 Qed.
 
-Fixpoint elt {A} (s: Stream A) (i: nat): A :=
+Fixpoint elt {A} (s: stream A) (i: nat): A :=
     match i with 0 => head s | S j => elt (s ') j end.
 Notation "s !! i" := (elt s i)(at level 60).
 
-Lemma equal_elt {A} (s t: Stream A): s === t -> forall i, s !! i = t !! i.
+Lemma equal_elt {A} (s t: stream A): s === t -> forall i, s !! i = t !! i.
 Proof.
 intros HC i.
 revert HC.
@@ -91,7 +91,7 @@ constructor.
     + apply CH with (y := y '); auto.
 Qed.
 
-
+(*
 Instance SCons_proper {A}: Proper (eq ==> (@equal A) ==> (@equal A)) SCons.
 Proof.
 intros x1 x2 Hx s1 s2 Hs.
@@ -100,6 +100,7 @@ constructor.
 - reflexivity.
 - exact Hs.
 Qed.
+*)
 
 Instance head_proper {A}: Proper (equal ==> eq) (@head A).
 Proof.
