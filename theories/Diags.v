@@ -77,6 +77,12 @@ Proof.
 Admitted.
 
 
+Theorem crop_cols_diags1 {A}
+    (xss: list (stream A))
+    (yss: stream (stream A)) :
+    crop xss yss ===
+      cols xss <++> ([] ::: diags1 yss).
+
 
 
 
